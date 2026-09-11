@@ -1,0 +1,20 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "clinica-estetica",
+	"main": "src/index.js",
+	"compatibility_date": "2026-09-01",
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "clinica-db",
+			"database_id": "10396411-35cc-40dc-b1ce-7330a135a513"
+		}
+	],
+	"r2_buckets": [
+		{
+			"bucket_name": "clinica-fotos",
+			"binding": "estetica_fotos",
+			
+		}
+	]
+}
