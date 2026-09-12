@@ -6,8 +6,45 @@ const app = new Hono();
 app.get('/favicon.ico', (c) => c.body(null, 204));
 
 // ==========================================
+// MIDDLEWARE DE AUTENTICACIÓN ZERO TRUST
+// ==========================================
+app.use('*', async (c, next) => {
+  if (c.req.path === '/favicon.ico') {
+    return await next();
+  }
+
+  let userEmail = c.req.header('cf-access-authenticated-user-email');
+
+  // En entorno local de desarrollo (wrangler dev), simulamos el admin
+  if (!userEmail && c.req.header('host')?.includes('localhost')) {
+    userEmail = 'payoyus@gmail.com';
+  }
+
+  if (!userEmail) {
+    return c.text('Acceso no autorizado: No se detectó identidad válida de Zero Trust.', 401);
+  }
+
+  const usuario = await c.env.DB.prepare(
+    'SELECT * FROM usuarios WHERE email = ? AND activo = 1'
+  ).bind(userEmail.toLowerCase().trim()).first();
+
+  if (!usuario) {
+    return c.text(`Acceso denegado: El correo ${userEmail} no está registrado en el personal de la clínica.`, 403);
+  }
+
+  c.set('usuarioActual', usuario);
+  await next();
+});
+
+// ==========================================
 // 1. ENDPOINTS DE LA API
 // ==========================================
+
+// Endpoint para conocer quién está conectado actualmente
+app.get('/api/me', (c) => {
+  const usuario = c.get('usuarioActual');
+  return c.json(usuario);
+});
 
 // Listar pacientes con filtro de búsqueda
 app.get('/api/pacientes', async (c) => {
@@ -63,7 +100,7 @@ app.post('/api/pacientes', async (c) => {
 app.post('/api/pacientes/:id/documentos/:tipo', async (c) => {
   try {
     const pacienteId = c.req.param('id');
-    const tipo = c.req.param('tipo'); // 'consentimiento' o 'historia'
+    const tipo = c.req.param('tipo');
 
     if (tipo !== 'consentimiento' && tipo !== 'historia') {
       return c.json({ error: 'Tipo de documento no válido' }, 400);
@@ -141,18 +178,25 @@ app.get('/api/pacientes/:id/historial', async (c) => {
 app.post('/api/sesiones', async (c) => {
   try {
     const body = await c.req.json();
-    const { paciente_id, profesional_id, tipo_tratamiento, descripcion } = body;
+    const usuarioActual = c.get('usuarioActual');
+    const { paciente_id, tipo_tratamiento, descripcion, profesional } = body;
 
     if (!paciente_id || !tipo_tratamiento || !descripcion) {
       return c.json({ error: 'Faltan datos obligatorios (paciente_id, tipo_tratamiento o descripcion)' }, 400);
     }
 
     const id = crypto.randomUUID();
+    // Clave foránea real ligada a usuarios(id)
+    const profesionalId = usuarioActual ? usuarioActual.id : 'usr_1';
+    // Nombre legible ingresado en el formulario o el usuario activo por defecto
+    const nombreProfesional = profesional && profesional.trim() !== '' 
+      ? profesional.trim() 
+      : (usuarioActual ? usuarioActual.nombre : 'Profesional');
 
     await c.env.DB.prepare(
-      `INSERT INTO sesiones_tratamiento (id, paciente_id, profesional_id, tipo_tratamiento, descripcion)
-       VALUES (?, ?, ?, ?, ?)`
-    ).bind(id, paciente_id, profesional_id || 'profesional_general', tipo_tratamiento, descripcion).run();
+      `INSERT INTO sesiones_tratamiento (id, paciente_id, profesional_id, profesional_nombre, tipo_tratamiento, descripcion)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).bind(id, paciente_id, profesionalId, nombreProfesional, tipo_tratamiento, descripcion).run();
 
     return c.json({ id, mensaje: 'Sesión registrada con éxito' }, 201);
   } catch (err) {
@@ -228,12 +272,16 @@ app.get('/api/archivos/*', async (c) => {
 // 2. FRONTEND (INTERFAZ DE USUARIO)
 // ==========================================
 app.get('/', (c) => {
+  const usuario = c.get('usuarioActual');
+  const usuarioNombre = usuario ? usuario.nombre : '';
+  const usuarioLabel = usuario ? `${usuario.nombre} (${usuario.rol.toUpperCase()})` : 'Usuario';
+
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Clínica Estética - Registro de Pacientes</title>
+  <title>Clínica Estética - Panel Profesional</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body { background-color: #f4f6f9; font-family: system-ui, -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -252,6 +300,7 @@ app.get('/', (c) => {
     .badge-control { background: #0dcaf0; color: #000; }
     .badge-otro { background: #6c757d; color: white; }
     .doc-badge { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 6px; font-size: 0.9rem; font-weight: 500; }
+    .user-pill { font-size: 0.85rem; background: #eef2f7; color: #334155; padding: 5px 12px; border-radius: 20px; font-weight: 500; }
   </style>
 </head>
 <body>
@@ -260,9 +309,12 @@ app.get('/', (c) => {
     <span class="navbar-brand text-dark fw-bold d-flex align-items-center gap-2 mb-0">
       🩺 Clínica Estética
     </span>
-    <button class="btn btn-primary ms-auto btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoPaciente">
-      + Nuevo Paciente
-    </button>
+    <div class="ms-auto d-flex align-items-center gap-2">
+      <span class="user-pill d-none d-sm-inline-block">👤 ${usuarioLabel}</span>
+      <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoPaciente">
+        + Nuevo Paciente
+      </button>
+    </div>
   </nav>
 
   <div class="container-fluid px-3 px-md-4 mt-3">
@@ -295,10 +347,8 @@ app.get('/', (c) => {
             </button>
           </div>
 
-          <!-- Alerta de Alergias -->
           <div id="alertasAlergia" class="alert alert-warning py-2 px-3 small mb-3" style="display: none;"></div>
 
-          <!-- Documentación del Paciente -->
           <div class="mb-4 p-3 bg-light rounded border">
             <div class="d-flex justify-content-between align-items-center mb-2">
               <h6 class="fw-bold mb-0 text-secondary">📁 Documentación Adjunta</h6>
@@ -311,7 +361,6 @@ app.get('/', (c) => {
             </div>
           </div>
 
-          <!-- Historial de Sesiones -->
           <h5 class="fw-bold mb-3">Historial Clínico y Fotos</h5>
           <div id="historialSesiones"></div>
         </div>
@@ -366,7 +415,7 @@ app.get('/', (c) => {
     </div>
   </div>
 
-  <!-- Modal: Adjuntar Documentación Posterior -->
+  <!-- Modal: Adjuntar Documentación -->
   <div class="modal fade" id="modalDocumentacion" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -378,11 +427,11 @@ app.get('/', (c) => {
           <div class="modal-body">
             <div class="mb-3">
               <label class="form-label small fw-bold">Consentimiento Médico (PDF o Imagen)</label>
-              <input type="file" id="docConsentimiento" class="form-control" accept=".pdf,image/*">
+              <input type="file" id="docConsentimiento" class="form-control" accept=".pdf,image/jpeg,image/png">
             </div>
             <div class="mb-3">
               <label class="form-label small fw-bold">Historia Clínica / Estudios Externos (PDF o Imagen)</label>
-              <input type="file" id="docHistoria" class="form-control" accept=".pdf,image/*">
+              <input type="file" id="docHistoria" class="form-control" accept=".pdf,image/jpeg,image/png">
             </div>
           </div>
           <div class="modal-footer">
@@ -405,6 +454,11 @@ app.get('/', (c) => {
         <form id="formSesion" onsubmit="guardarSesion(event)">
           <div class="modal-body">
             <div class="mb-2">
+              <label class="form-label small fw-bold">Profesional a cargo</label>
+              <input type="text" id="sProfesional" class="form-control" value="${usuarioNombre}" placeholder="Nombre del profesional que realizó el tratamiento">
+              <div class="form-text small">Por defecto tu nombre, modifícalo si estás cargando la ficha de otro profesional.</div>
+            </div>
+            <div class="mb-2">
               <label class="form-label small fw-bold">Tipo de Tratamiento *</label>
               <input type="text" id="sTipo" class="form-control" placeholder="Ej: Toxina Botulínica, Peeling, Ácido Hialurónico" required>
             </div>
@@ -414,8 +468,8 @@ app.get('/', (c) => {
             </div>
             <div class="mb-2">
               <label class="form-label small fw-bold">Adjuntar Fotografía(s)</label>
-              <input type="file" id="sFoto" class="form-control" accept="image/*" multiple>
-              <div class="form-text small">Puedes tomar la foto directo o seleccionarla de galería.</div>
+              <input type="file" id="sFoto" class="form-control" accept="image/jpeg,image/png,image/webp,image/*" multiple>
+              <div class="form-text small">Puedes seleccionar varias fotos al mismo tiempo.</div>
             </div>
             <div class="mb-2">
               <label class="form-label small fw-bold">Etiqueta de la Foto</label>
@@ -455,7 +509,7 @@ app.get('/', (c) => {
 
     async function cargarPacientes(query) {
       if (!query) query = '';
-      const res = await fetch('/api/pacientes?q=' + encodeURIComponent(query));
+      const res = await fetch('/api/pacientes?q=' + encodeURIComponent(query), { cache: 'no-store' });
       const pacientes = await res.json();
       const lista = document.getElementById('listaPacientes');
       lista.innerHTML = '';
@@ -481,7 +535,7 @@ app.get('/', (c) => {
 
       document.querySelectorAll('.paciente-item').forEach(function(el) { el.classList.remove('active'); });
 
-      const res = await fetch('/api/pacientes/' + id + '/historial');
+      const res = await fetch('/api/pacientes/' + id + '/historial?t=' + Date.now(), { cache: 'no-store' });
       const data = await res.json();
       const p = data.paciente;
 
@@ -520,6 +574,12 @@ app.get('/', (c) => {
         const fecha = new Date(s.fecha_tratamiento);
         const fechaStr = fecha.toLocaleDateString() + ' ' + fecha.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         
+        let profesionalBadge = '';
+        const textoProfesional = s.profesional_nombre || s.profesional_id;
+        if (textoProfesional && textoProfesional !== 'profesional_general') {
+          profesionalBadge = '<span class="badge bg-light text-dark border">🩺 ' + textoProfesional + '</span>';
+        }
+
         let fotosHtml = '';
         if (s.fotos && s.fotos.length > 0) {
           s.fotos.forEach(function(f) {
@@ -537,8 +597,11 @@ app.get('/', (c) => {
         }
 
         htmlSesiones += '<div class="border rounded p-3 bg-white mb-3 shadow-sm">' +
-          '<div class="d-flex justify-content-between align-items-center mb-1">' +
-            '<span class="badge bg-secondary">' + s.tipo_tratamiento + '</span>' +
+          '<div class="d-flex flex-wrap justify-content-between align-items-center mb-1 gap-1">' +
+            '<div class="d-flex align-items-center gap-2">' +
+              '<span class="badge bg-secondary">' + s.tipo_tratamiento + '</span>' +
+              profesionalBadge +
+            '</div>' +
             '<small class="text-muted">' + fechaStr + '</small>' +
           '</div>' +
           '<p class="small text-secondary mb-2">' + (s.descripcion || '') + '</p>' +
@@ -577,7 +640,7 @@ app.get('/', (c) => {
         modalPaciente.hide();
         document.getElementById('formPaciente').reset();
         await cargarPacientes();
-        seleccionarPaciente(data.id);
+        await seleccionarPaciente(data.id);
       } catch (err) {
         alert('Error: ' + err.message);
       } finally {
@@ -669,7 +732,7 @@ app.get('/', (c) => {
 
             canvas.toBlob(function(blob) {
               if (!blob) return resolve(archivo);
-              const archivoComprimido = new File([blob], archivo.name.replace(/\\.[^/.]+$/, ".jpg"), {
+              const archivoComprimido = new File([blob], archivo.name.replace(/\.[^/.]+$/, ".jpg"), {
                 type: 'image/jpeg',
                 lastModified: Date.now()
               });
@@ -695,6 +758,7 @@ app.get('/', (c) => {
         return;
       }
 
+      const profesional = document.getElementById('sProfesional').value;
       const tipo = document.getElementById('sTipo').value;
       const desc = document.getElementById('sDesc').value;
 
@@ -704,6 +768,7 @@ app.get('/', (c) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             paciente_id: pacienteActivoId,
+            profesional: profesional,
             tipo_tratamiento: tipo,
             descripcion: desc
           })
