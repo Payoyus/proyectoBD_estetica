@@ -96,14 +96,20 @@ app.post('/api/pacientes', async (c) => {
   }
 });
 
-// Subir documento de paciente (Stream directo a R2)
+// Subir documento de paciente (Stream a R2 con Rollback atómico)
 app.post('/api/pacientes/:id/documentos/:tipo', async (c) => {
+  let storagePath = null;
   try {
     const pacienteId = c.req.param('id');
     const tipo = c.req.param('tipo');
 
     if (tipo !== 'consentimiento' && tipo !== 'historia') {
       return c.json({ error: 'Tipo de documento no válido' }, 400);
+    }
+
+    const pacienteExiste = await c.env.DB.prepare('SELECT id FROM pacientes WHERE id = ?').bind(pacienteId).first();
+    if (!pacienteExiste) {
+      return c.json({ error: 'El paciente especificado no existe' }, 404);
     }
 
     const formData = await c.req.raw.formData();
@@ -114,7 +120,7 @@ app.post('/api/pacientes/:id/documentos/:tipo', async (c) => {
     }
 
     const ext = archivo.name && archivo.name.includes('.') ? archivo.name.split('.').pop() : 'pdf';
-    const storagePath = 'documentos/' + pacienteId + '/' + tipo + '_' + crypto.randomUUID() + '.' + ext;
+    storagePath = 'documentos/' + pacienteId + '/' + tipo + '_' + crypto.randomUUID() + '.' + ext;
 
     await c.env.estetica_fotos.put(storagePath, archivo.stream(), {
       httpMetadata: { contentType: archivo.type || 'application/pdf' }
@@ -127,11 +133,18 @@ app.post('/api/pacientes/:id/documentos/:tipo', async (c) => {
 
     return c.json({ ok: true, storagePath });
   } catch (err) {
+    if (storagePath) {
+      try {
+        await c.env.estetica_fotos.delete(storagePath);
+      } catch (cleanupErr) {
+        console.error('Error al limpiar archivo huérfano en R2:', cleanupErr);
+      }
+    }
     return c.json({ error: 'Error al subir documento', detalle: err.message }, 500);
   }
 });
 
-// Detalle e historial de un paciente
+// Detalle e historial de un paciente (Consulta unificada sin N+1)
 app.get('/api/pacientes/:id/historial', async (c) => {
   try {
     const id = c.req.param('id');
@@ -141,25 +154,50 @@ app.get('/api/pacientes/:id/historial', async (c) => {
       return c.json({ error: 'Paciente no encontrado' }, 404);
     }
 
-    const sesiones = await c.env.DB.prepare(
-      'SELECT * FROM sesiones_tratamiento WHERE paciente_id = ? ORDER BY fecha_tratamiento DESC'
-    ).bind(id).all();
+    const { results } = await c.env.DB.prepare(`
+      SELECT 
+        s.id,
+        s.paciente_id,
+        s.profesional_id,
+        s.profesional_nombre,
+        s.tipo_tratamiento,
+        s.descripcion,
+        s.fecha_tratamiento,
+        s.created_at,
+        COALESCE(
+          json_group_array(
+            CASE 
+              WHEN f.id IS NOT NULL THEN json_object(
+                'id', f.id,
+                'sesion_id', f.sesion_id,
+                'storage_path', f.storage_path,
+                'etiqueta', f.etiqueta,
+                'created_at', f.created_at,
+                'url_visualizacion', '/api/archivos/' || f.storage_path
+              )
+              ELSE NULL 
+            END
+          ) FILTER (WHERE f.id IS NOT NULL),
+          '[]'
+        ) AS fotos_json
+      FROM sesiones_tratamiento s
+      LEFT JOIN fotos_tratamiento f ON s.id = f.sesion_id
+      WHERE s.paciente_id = ?
+      GROUP BY s.id
+      ORDER BY s.fecha_tratamiento DESC
+    `).bind(id).all();
 
-    const historial = await Promise.all(
-      sesiones.results.map(async (sesion) => {
-        const fotos = await c.env.DB.prepare(
-          'SELECT * FROM fotos_tratamiento WHERE sesion_id = ? ORDER BY created_at ASC'
-        ).bind(sesion.id).all();
-
-        return {
-          ...sesion,
-          fotos: fotos.results.map((f) => ({
-            ...f,
-            url_visualizacion: '/api/archivos/' + f.storage_path
-          }))
-        };
-      })
-    );
+    const historial = results.map((row) => ({
+      id: row.id,
+      paciente_id: row.paciente_id,
+      profesional_id: row.profesional_id,
+      profesional_nombre: row.profesional_nombre,
+      tipo_tratamiento: row.tipo_tratamiento,
+      descripcion: row.descripcion,
+      fecha_tratamiento: row.fecha_tratamiento,
+      created_at: row.created_at,
+      fotos: JSON.parse(row.fotos_json)
+    }));
 
     return c.json({
       paciente: {
@@ -204,8 +242,9 @@ app.post('/api/sesiones', async (c) => {
   }
 });
 
-// Subir fotografías a una sesión
+// Subir fotografías a una sesión (Stream a R2 con Rollback atómico)
 app.post('/api/sesiones/:sesion_id/fotos', async (c) => {
+  let storage_path = null;
   try {
     const sesion_id = c.req.param('sesion_id');
 
@@ -225,7 +264,7 @@ app.post('/api/sesiones/:sesion_id/fotos', async (c) => {
     const fotoId = crypto.randomUUID();
     const nombreOriginal = foto.name || 'foto.jpg';
     const ext = nombreOriginal.includes('.') ? nombreOriginal.split('.').pop() : 'jpg';
-    const storage_path = 'sesiones/' + sesion_id + '/' + fotoId + '.' + ext;
+    storage_path = 'sesiones/' + sesion_id + '/' + fotoId + '.' + ext;
 
     await c.env.estetica_fotos.put(storage_path, foto.stream(), {
       httpMetadata: { contentType: foto.type || 'image/jpeg' }
@@ -243,6 +282,13 @@ app.post('/api/sesiones/:sesion_id/fotos', async (c) => {
       mensaje: 'Foto almacenada exitosamente'
     }, 201);
   } catch (err) {
+    if (storage_path) {
+      try {
+        await c.env.estetica_fotos.delete(storage_path);
+      } catch (cleanupErr) {
+        console.error('Error al limpiar foto huérfana en R2:', cleanupErr);
+      }
+    }
     return c.json({ error: 'Error al subir la fotografía', detalle: err.message || String(err) }, 500);
   }
 });
