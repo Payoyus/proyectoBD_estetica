@@ -25,7 +25,7 @@ async function inicializarUsuario() {
     const res = await fetch('/api/me');
     if (res.ok) {
       usuarioConectado = await res.json();
-      document.getElementById('userPill').innerText = `👤 ${usuarioConectado.nombre} (${usuarioConectado.rol.toUpperCase()})`;
+      document.getElementById('userPill').innerHTML = '<i class="bi bi-person-circle me-1 text-gold"></i> ' + escapeHtml(usuarioConectado.nombre) + ' (' + escapeHtml(usuarioConectado.rol.toUpperCase()) + ')';
       const inputProf = document.getElementById('sProfesional');
       if (inputProf) inputProf.value = usuarioConectado.nombre;
     }
@@ -78,7 +78,7 @@ async function seleccionarPaciente(id) {
 
   const divAlergias = document.getElementById('alertasAlergia');
   if (p.antecedentes_alergias) {
-    divAlergias.innerText = '⚠️ Alergias / Antecedentes: ' + p.antecedentes_alergias;
+    divAlergias.innerHTML = '<i class="bi bi-exclamation-circle-fill me-2 text-gold"></i><strong>Antecedentes / Alergias:</strong> ' + escapeHtml(p.antecedentes_alergias);
     divAlergias.style.display = 'block';
   } else {
     divAlergias.style.display = 'none';
@@ -87,10 +87,10 @@ async function seleccionarPaciente(id) {
   const docsDiv = document.getElementById('docsContainer');
   let docsHtml = '';
   if (p.url_consentimiento) {
-    docsHtml += '<a href="' + encodeURI(p.url_consentimiento) + '" target="_blank" class="btn btn-outline-success btn-sm doc-badge">📄 Consentimiento Médico</a>';
+    docsHtml += '<a href="' + encodeURI(p.url_consentimiento) + '" target="_blank" class="btn btn-outline-secondary btn-sm doc-badge"><i class="bi bi-file-earmark-medical me-1"></i> Consentimiento Médico</a>';
   }
   if (p.url_historia_clinica) {
-    docsHtml += '<a href="' + encodeURI(p.url_historia_clinica) + '" target="_blank" class="btn btn-outline-info btn-sm doc-badge">📑 Historia Clínica</a>';
+    docsHtml += '<a href="' + encodeURI(p.url_historia_clinica) + '" target="_blank" class="btn btn-outline-secondary btn-sm doc-badge"><i class="bi bi-file-earmark-text me-1"></i> Historia Clínica</a>';
   }
   if (!p.url_consentimiento && !p.url_historia_clinica) {
     docsHtml = '<span class="text-muted small">Sin documentación adjunta.</span>';
@@ -118,7 +118,7 @@ async function seleccionarPaciente(id) {
     let profesionalBadge = '';
     const textoProfesional = s.profesional_nombre || s.profesional_id;
     if (textoProfesional && textoProfesional !== 'profesional_general') {
-      profesionalBadge = '<span class="badge bg-light text-dark border">🩺 ' + escapeHtml(textoProfesional) + '</span>';
+      profesionalBadge = '<span class="badge bg-white text-secondary border"><i class="bi bi-person me-1"></i>' + escapeHtml(textoProfesional) + '</span>';
     }
 
     // Clasificación de fotos según su etiqueta
@@ -134,24 +134,26 @@ async function seleccionarPaciente(id) {
       cuerpoFotosHtml = 
         '<div class="row g-3 mt-1">' +
           '<div class="col-md-6 border-end pe-md-3">' +
-            '<h6 class="text-danger fw-bold small text-uppercase mb-2">⬅️ Antes</h6>' +
+            '<h6 class="fw-bold small text-uppercase text-muted mb-2" style="letter-spacing: 0.05em;"><i class="bi bi-arrow-left-circle me-1"></i> Antes</h6>' +
             '<div class="row g-2">' + renderGaleriaFotos(fotosAntes) + '</div>' +
           '</div>' +
           '<div class="col-md-6 ps-md-3">' +
-            '<h6 class="text-success fw-bold small text-uppercase mb-2">➡️ Después / Resultado</h6>' +
+            '<h6 class="fw-bold small text-uppercase text-dark mb-2" style="letter-spacing: 0.05em;"><i class="bi bi-check2-circle text-gold me-1"></i> Resultado / Después</h6>' +
             '<div class="row g-2">' + renderGaleriaFotos(fotosDespues) + '</div>' +
           '</div>' +
         '</div>';
     } else {
-      // Caso 2: Solo un bloque (ej: sesión de control o tomas únicas al 100% del ancho)
+      // Caso 2: Solo un bloque
       const esAntes = fotosAntes.length > 0;
-      const titulo = esAntes ? '⬅️ Antes' : '➡️ Evolución / Control';
-      const colorClase = esAntes ? 'text-danger' : 'text-success';
+      const titulo = esAntes 
+        ? '<i class="bi bi-arrow-left-circle me-1"></i> Registro Inicial' 
+        : '<i class="bi bi-shield-check me-1 text-gold"></i> Seguimiento / Evolución';
+      const colorClase = esAntes ? 'text-muted' : 'text-dark';
       const listaFotos = esAntes ? fotosAntes : fotosDespues;
 
       cuerpoFotosHtml = 
         '<div class="mt-1">' +
-          '<h6 class="' + colorClase + ' fw-bold small text-uppercase mb-2">' + titulo + '</h6>' +
+          '<h6 class="' + colorClase + ' fw-bold small text-uppercase mb-2" style="letter-spacing: 0.05em;">' + titulo + '</h6>' +
           '<div class="row g-2">' + renderGaleriaFotos(listaFotos) + '</div>' +
         '</div>';
     }
@@ -172,6 +174,7 @@ async function seleccionarPaciente(id) {
 
   contSesiones.innerHTML = htmlSesiones;
 }
+
 async function guardarPaciente(e) {
   e.preventDefault();
   const btn = document.getElementById('btnGuardarPaciente');
@@ -401,10 +404,10 @@ async function guardarSesion(e) {
 function renderGaleriaFotos(fotos) {
   return fotos.map(function (f) {
     return '<div class="col-6 col-sm-4">' +
-      '<div class="photo-card shadow-sm border mb-1">' +
+      '<div class="photo-card mb-1">' +
         '<span class="photo-tag badge-' + escapeHtml(f.etiqueta) + '">' + escapeHtml(f.etiqueta.toUpperCase()) + '</span>' +
         '<a href="' + encodeURI(f.url_visualizacion) + '" target="_blank">' +
-          '<img src="' + encodeURI(f.url_visualizacion) + '" alt="Foto clínica" loading="lazy" style="width:100%; height:140px; object-fit:cover; display:block;">' +
+          '<img src="' + encodeURI(f.url_visualizacion) + '" alt="Foto clínica" loading="lazy">' +
         '</a>' +
       '</div>' +
     '</div>';

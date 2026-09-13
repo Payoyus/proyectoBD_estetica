@@ -2,13 +2,13 @@
 
 :root {
   --gold-primary: #c5a059;
-  --gold-hover: #ad873e;
-  --gold-light: #f5efe6;
-  --gold-border: #dfd4c2;
+  --gold-hover: #b08d46;
+  --gold-light: #fcfbf9;
+  --gold-border: #e8e2d5;
   --dark-bg: #121212;
-  --dark-surface: #1e1e1e;
+  --dark-surface: #222222;
   --body-bg: #f8f8f7;
-  --text-main: #2b2b2b;
+  --text-main: #242424;
   --text-muted: #737373;
 }
 
@@ -16,128 +16,215 @@ body {
   font-family: 'Montserrat', sans-serif;
   background-color: var(--body-bg);
   color: var(--text-main);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.015em;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Navbar superior estilo premium */
+/* Navbar superior */
 .navbar {
   background-color: var(--dark-bg) !important;
-  border-bottom: 1px solid #2a2a2a;
+  border-bottom: 1px solid #282828;
+  padding: 0.75rem 1.5rem;
 }
 
 .navbar-brand {
   color: var(--gold-primary) !important;
   font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0.14em;
   font-size: 0.95rem;
+  text-transform: uppercase;
 }
 
-/* Botones principales dorados */
+/* Pastilla de usuario */
+#userPill {
+  color: #e5e5e5 !important;
+  background-color: #242424 !important;
+  border: 1px solid #3d3d3d !important;
+  font-size: 0.82rem;
+  letter-spacing: 0.03em;
+}
+
+/* Botones principales */
 .btn-primary {
-  background-color: var(--gold-primary);
-  border-color: var(--gold-primary);
-  color: #ffffff;
+  background-color: var(--gold-primary) !important;
+  border-color: var(--gold-primary) !important;
+  color: #ffffff !important;
   font-weight: 500;
-  letter-spacing: 0.05em;
-  transition: all 0.2s ease-in-out;
+  letter-spacing: 0.04em;
+  border-radius: 6px;
+  transition: all 0.2s ease;
 }
 
-.btn-primary:hover, .btn-primary:focus, .btn-primary:active {
+.btn-primary:hover, .btn-primary:focus {
   background-color: var(--gold-hover) !important;
   border-color: var(--gold-hover) !important;
-  color: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(197, 160, 89, 0.25);
 }
 
-.btn-outline-primary {
-  color: var(--gold-primary);
+.btn-outline-secondary {
+  border-color: var(--gold-border) !important;
+  color: #4a4a4a !important;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  background-color: #ffffff;
+}
+
+.btn-outline-secondary:hover {
+  background-color: var(--gold-light) !important;
+  border-color: var(--gold-primary) !important;
+  color: var(--gold-primary) !important;
+}
+
+/* Buscador y Sidebar */
+#buscador {
+  border-radius: 20px;
+  border: 1px solid #e0e0e0;
+  padding-left: 1rem;
+  font-size: 0.85rem;
+  background-color: #fafafa;
+}
+
+#buscador:focus {
+  background-color: #ffffff;
   border-color: var(--gold-primary);
+  box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.15);
 }
 
-.btn-outline-primary:hover {
-  background-color: var(--gold-primary);
-  border-color: var(--gold-primary);
-  color: #ffffff;
-}
-
-/* Sidebar y lista de pacientes */
-.sidebar {
-  background: #ffffff;
-  border-right: 1px solid var(--gold-border);
-}
-
+/* Ítems de pacientes con cursor pointer y sin selección de texto accidental */
 .paciente-item {
-  border-left: 3px solid transparent !important;
-  transition: all 0.15s ease-in-out;
+  cursor: pointer !important;
+  user-select: none;
+  border-left: 4px solid transparent !important;
+  border-bottom: 1px solid #f2f2f2 !important;
+  transition: all 0.15s ease;
+  background: #ffffff;
+}
+
+.paciente-item * {
+  cursor: pointer !important;
 }
 
 .paciente-item:hover {
-  background-color: var(--gold-light);
+  background-color: var(--gold-light) !important;
 }
 
 .paciente-item.active {
   background-color: var(--gold-light) !important;
-  border-left: 3px solid var(--gold-primary) !important;
-  color: var(--dark-bg) !important;
+  border-left: 4px solid var(--gold-primary) !important;
 }
 
-.paciente-item.active .text-muted {
-  color: #6c604d !important;
+.paciente-item.active .fw-bold {
+  color: #111111;
 }
 
-/* Tarjetas y contenedores */
-.card, .border.rounded.bg-white {
-  border-color: var(--gold-border) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+/* Ficha Médica */
+#pacienteNombre {
+  color: #1a1a1a !important;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
-/* Alertas y badges */
+#pacienteInfo {
+  color: var(--text-muted);
+  font-size: 0.84rem;
+}
+
+/* Alerta de Alergias refinada */
 #alertasAlergia {
-  background-color: #fff9f0;
-  border: 1px solid #faecd8;
-  color: #9c6c1c;
+  background-color: #fdfbf7 !important;
+  border: 1px solid var(--gold-border) !important;
+  color: #8c6a28 !important;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  padding: 0.65rem 1rem;
+  font-weight: 500;
+}
+
+/* Documentación adjunta */
+.doc-badge {
+  border-color: var(--gold-border) !important;
+  color: #333333 !important;
+  background-color: #ffffff;
+  font-weight: 500;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.8rem;
   border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.doc-badge:hover {
+  background-color: var(--gold-light) !important;
+  border-color: var(--gold-primary) !important;
+  color: var(--gold-primary) !important;
+}
+
+/* Tarjetas de Sesión */
+.border.rounded.bg-white.mb-3 {
+  border-color: #ebe7e1 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
 }
 
 .badge.bg-secondary {
   background-color: var(--dark-surface) !important;
-  letter-spacing: 0.05em;
+  color: #f5f5f5 !important;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  padding: 0.4em 0.7em;
+  border-radius: 6px;
 }
 
-/* Tarjetas de fotos */
+/* Fotos clínicas (proporción facial vertical 4:5) */
 .photo-card {
   position: relative;
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
-  border: 1px solid #e5e5e5;
-  background: #000;
+  border: 1px solid #e2ded7;
+  background-color: #0d0d0d;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.photo-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+}
+
+.photo-card img {
+  width: 100% !important;
+  height: 220px !important;
+  object-fit: cover;
+  object-position: center 20%;
+  display: block;
 }
 
 .photo-tag {
   position: absolute;
-  top: 6px;
-  left: 6px;
+  top: 8px;
+  left: 8px;
   font-size: 0.65rem;
   font-weight: 700;
-  padding: 2px 6px;
+  padding: 3px 7px;
   border-radius: 4px;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   z-index: 2;
+  text-transform: uppercase;
 }
 
 .badge-antes {
   background: rgba(18, 18, 18, 0.85);
-  color: #f3f3f3;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(4px);
 }
 
 .badge-despues {
   background: rgba(197, 160, 89, 0.95);
   color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(4px);
 }
 
-.doc-badge {
-  border-radius: 6px;
-  font-size: 0.8rem;
-  letter-spacing: 0.03em;
+.text-gold {
+  color: var(--gold-primary) !important;
 }
