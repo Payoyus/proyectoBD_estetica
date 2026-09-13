@@ -11,7 +11,7 @@
 
   <nav class="navbar navbar-expand-lg navbar-dark bg-white border-bottom shadow-sm px-3 px-md-4 py-2 sticky-top">
     <span class="navbar-brand text-dark fw-bold d-flex align-items-center gap-2 mb-0">
-      🩺 Clínica Estética
+      🩺 Pacientes Estética
     </span>
     <div class="ms-auto d-flex align-items-center gap-2">
       <span class="user-pill d-none d-sm-inline-block" id="userPill">Cargando usuario...</span>
@@ -145,9 +145,9 @@
     </div>
   </div>
 
-  <!-- Modal: Nueva Sesión -->
+ <!-- Modal: Nueva Sesión -->
   <div class="modal fade" id="modalNuevaSesion" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title fw-bold">Nueva Sesión Clínica</h5>
@@ -164,23 +164,23 @@
               <label class="form-label small fw-bold">Tipo de Tratamiento *</label>
               <input type="text" id="sTipo" class="form-control" placeholder="Ej: Toxina Botulínica, Peeling, Ácido Hialurónico" required>
             </div>
-            <div class="mb-2">
+            <div class="mb-3">
               <label class="form-label small fw-bold">Detalles / Evolución Clínica *</label>
               <textarea id="sDesc" class="form-control" rows="3" placeholder="Zonas tratadas, producto aplicado, unidades/ml, etc." required></textarea>
             </div>
-            <div class="mb-2">
-              <label class="form-label small fw-bold">Adjuntar Fotografía(s)</label>
-              <input type="file" id="sFoto" class="form-control" accept="image/jpeg,image/png,image/webp,image/*" multiple>
-              <div class="form-text small">Puedes seleccionar varias fotos al mismo tiempo.</div>
-            </div>
-            <div class="mb-2">
-              <label class="form-label small fw-bold">Etiqueta de la Foto</label>
-              <select id="sEtiqueta" class="form-select">
-                <option value="antes">Antes del procedimiento</option>
-                <option value="despues">Inmediatamente Después</option>
-                <option value="control">Control</option>
-                <option value="otro">Otro</option>
-              </select>
+
+            <!-- Nuevos casilleros específicos para fotos -->
+            <div class="row g-2 mb-2 p-2 bg-light rounded border">
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-danger">📷 Fotos: Antes</label>
+                <input type="file" id="sFotosAntes" class="form-control form-control-sm" accept="image/jpeg,image/png,image/webp,image/*" multiple>
+                <div class="form-text small">Estado previo al tratamiento (opcional).</div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-success">📷 Fotos: Después / Control</label>
+                <input type="file" id="sFotosDespues" class="form-control form-control-sm" accept="image/jpeg,image/png,image/webp,image/*" multiple>
+                <div class="form-text small">Resultado o seguimiento (opcional).</div>
+              </div>
             </div>
           </div>
           <div class="modal-footer">

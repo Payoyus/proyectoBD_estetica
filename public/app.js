@@ -105,8 +105,15 @@ async function seleccionarPaciente(id) {
 
   let htmlSesiones = '';
   data.historial.forEach(function (s) {
-    const fecha = new Date(s.fecha_tratamiento);
-    const fechaStr = fecha.toLocaleDateString() + ' ' + fecha.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // Normalización para interpretar correctamente la fecha UTC guardada por SQLite (D1)
+    let rawFecha = s.fecha_tratamiento || '';
+    if (rawFecha && !rawFecha.endsWith('Z') && !rawFecha.includes('+')) {
+      rawFecha = rawFecha.replace(' ', 'T') + 'Z';
+    }
+    const fecha = new Date(rawFecha);
+    const fechaStr = isNaN(fecha.getTime()) 
+      ? s.fecha_tratamiento 
+      : (fecha.toLocaleDateString() + ' ' + fecha.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
     let profesionalBadge = '';
     const textoProfesional = s.profesional_nombre || s.profesional_id;
@@ -114,38 +121,57 @@ async function seleccionarPaciente(id) {
       profesionalBadge = '<span class="badge bg-light text-dark border">🩺 ' + escapeHtml(textoProfesional) + '</span>';
     }
 
-    let fotosHtml = '';
-    if (s.fotos && s.fotos.length > 0) {
-      s.fotos.forEach(function (f) {
-        fotosHtml += '<div class="col-6 col-md-4 col-lg-3">' +
-          '<div class="photo-card shadow-sm border mb-2">' +
-            '<span class="photo-tag badge-' + escapeHtml(f.etiqueta) + '">' + escapeHtml(f.etiqueta.toUpperCase()) + '</span>' +
-            '<a href="' + encodeURI(f.url_visualizacion) + '" target="_blank">' +
-              '<img src="' + encodeURI(f.url_visualizacion) + '" alt="Foto" loading="lazy" style="width:100%; height:180px; object-fit:cover; display:block;">' +
-            '</a>' +
+    // Clasificación de fotos según su etiqueta
+    const fotosAntes = (s.fotos || []).filter(function(f) { return f.etiqueta === 'antes'; });
+    const fotosDespues = (s.fotos || []).filter(function(f) { return f.etiqueta !== 'antes'; });
+
+    let cuerpoFotosHtml = '';
+
+    if (!s.fotos || s.fotos.length === 0) {
+      cuerpoFotosHtml = '<p class="text-muted small ps-2 mb-0">Sin fotografías en esta sesión.</p>';
+    } else if (fotosAntes.length > 0 && fotosDespues.length > 0) {
+      // Caso 1: Comparación lado a lado (Antes vs Después)
+      cuerpoFotosHtml = 
+        '<div class="row g-3 mt-1">' +
+          '<div class="col-md-6 border-end pe-md-3">' +
+            '<h6 class="text-danger fw-bold small text-uppercase mb-2">⬅️ Antes</h6>' +
+            '<div class="row g-2">' + renderGaleriaFotos(fotosAntes) + '</div>' +
+          '</div>' +
+          '<div class="col-md-6 ps-md-3">' +
+            '<h6 class="text-success fw-bold small text-uppercase mb-2">➡️ Después / Resultado</h6>' +
+            '<div class="row g-2">' + renderGaleriaFotos(fotosDespues) + '</div>' +
           '</div>' +
         '</div>';
-      });
     } else {
-      fotosHtml = '<p class="text-muted small ps-2">Sin fotografías en esta sesión.</p>';
+      // Caso 2: Solo un bloque (ej: sesión de control o tomas únicas al 100% del ancho)
+      const esAntes = fotosAntes.length > 0;
+      const titulo = esAntes ? '⬅️ Antes' : '➡️ Evolución / Control';
+      const colorClase = esAntes ? 'text-danger' : 'text-success';
+      const listaFotos = esAntes ? fotosAntes : fotosDespues;
+
+      cuerpoFotosHtml = 
+        '<div class="mt-1">' +
+          '<h6 class="' + colorClase + ' fw-bold small text-uppercase mb-2">' + titulo + '</h6>' +
+          '<div class="row g-2">' + renderGaleriaFotos(listaFotos) + '</div>' +
+        '</div>';
     }
 
-    htmlSesiones += '<div class="border rounded p-3 bg-white mb-3 shadow-sm">' +
-      '<div class="d-flex flex-wrap justify-content-between align-items-center mb-1 gap-1">' +
-        '<div class="d-flex align-items-center gap-2">' +
-          '<span class="badge bg-secondary">' + escapeHtml(s.tipo_tratamiento) + '</span>' +
-          profesionalBadge +
+    htmlSesiones += 
+      '<div class="border rounded p-3 bg-white mb-3 shadow-sm">' +
+        '<div class="d-flex flex-wrap justify-content-between align-items-center mb-1 gap-1">' +
+          '<div class="d-flex align-items-center gap-2">' +
+            '<span class="badge bg-secondary">' + escapeHtml(s.tipo_tratamiento) + '</span>' +
+            profesionalBadge +
+          '</div>' +
+          '<small class="text-muted">' + escapeHtml(fechaStr) + '</small>' +
         '</div>' +
-        '<small class="text-muted">' + escapeHtml(fechaStr) + '</small>' +
-      '</div>' +
-      '<p class="small text-secondary mb-2">' + escapeHtml(s.descripcion || '') + '</p>' +
-      '<div class="row g-2 mt-1">' + fotosHtml + '</div>' +
-    '</div>';
+        '<p class="small text-secondary mb-2">' + escapeHtml(s.descripcion || '') + '</p>' +
+        cuerpoFotosHtml +
+      '</div>';
   });
 
   contSesiones.innerHTML = htmlSesiones;
 }
-
 async function guardarPaciente(e) {
   e.preventDefault();
   const btn = document.getElementById('btnGuardarPaciente');
@@ -314,20 +340,37 @@ async function guardarSesion(e) {
     }
 
     const nuevaSesionId = data.id;
-    const fotoInput = document.getElementById('sFoto');
+    const inputAntes = document.getElementById('sFotosAntes');
+    const inputDespues = document.getElementById('sFotosDespues');
 
-    if (fotoInput.files && fotoInput.files.length > 0) {
-      const etiqueta = document.getElementById('sEtiqueta').value;
-      const files = Array.from(fotoInput.files);
+    const listaSubidas = [];
 
-      btn.innerText = `Optimizando ${files.length} fotos...`;
-      const fotosOptimizadas = await Promise.all(files.map(f => optimizarImagen(f)));
+    if (inputAntes && inputAntes.files.length > 0) {
+      Array.from(inputAntes.files).forEach((file) => {
+        listaSubidas.push({ file, etiqueta: 'antes' });
+      });
+    }
 
-      btn.innerText = `Subiendo ${fotosOptimizadas.length} fotos en paralelo...`;
-      await Promise.all(fotosOptimizadas.map(async (fotoOptimizada) => {
+    if (inputDespues && inputDespues.files.length > 0) {
+      Array.from(inputDespues.files).forEach((file) => {
+        listaSubidas.push({ file, etiqueta: 'despues' });
+      });
+    }
+
+    if (listaSubidas.length > 0) {
+      btn.innerText = `Optimizando ${listaSubidas.length} fotos...`;
+      const optimizadas = await Promise.all(
+        listaSubidas.map(async (item) => ({
+          archivo: await optimizarImagen(item.file),
+          etiqueta: item.etiqueta
+        }))
+      );
+
+      btn.innerText = `Subiendo ${optimizadas.length} fotos en paralelo...`;
+      await Promise.all(optimizadas.map(async (item) => {
         const formData = new FormData();
-        formData.append('foto', fotoOptimizada);
-        formData.append('etiqueta', etiqueta);
+        formData.append('foto', item.archivo);
+        formData.append('etiqueta', item.etiqueta);
 
         const uploadRes = await fetch('/api/sesiones/' + nuevaSesionId + '/fotos', {
           method: 'POST',
@@ -353,4 +396,17 @@ async function guardarSesion(e) {
     btn.disabled = false;
     btn.innerText = 'Guardar Sesión';
   }
+}
+
+function renderGaleriaFotos(fotos) {
+  return fotos.map(function (f) {
+    return '<div class="col-6 col-sm-4">' +
+      '<div class="photo-card shadow-sm border mb-1">' +
+        '<span class="photo-tag badge-' + escapeHtml(f.etiqueta) + '">' + escapeHtml(f.etiqueta.toUpperCase()) + '</span>' +
+        '<a href="' + encodeURI(f.url_visualizacion) + '" target="_blank">' +
+          '<img src="' + encodeURI(f.url_visualizacion) + '" alt="Foto clínica" loading="lazy" style="width:100%; height:140px; object-fit:cover; display:block;">' +
+        '</a>' +
+      '</div>' +
+    '</div>';
+  }).join('');
 }
