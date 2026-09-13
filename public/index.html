@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Clínica Estética - Panel Profesional</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+  <nav class="navbar navbar-expand-lg navbar-dark bg-white border-bottom shadow-sm px-3 px-md-4 py-2 sticky-top">
+    <span class="navbar-brand text-dark fw-bold d-flex align-items-center gap-2 mb-0">
+      🩺 Clínica Estética
+    </span>
+    <div class="ms-auto d-flex align-items-center gap-2">
+      <span class="user-pill d-none d-sm-inline-block" id="userPill">Cargando usuario...</span>
+      <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoPaciente">
+        + Nuevo Paciente
+      </button>
+    </div>
+  </nav>
+
+  <div class="container-fluid px-3 px-md-4 mt-3">
+    <div class="row">
+      <!-- Columna Izquierda: Lista de Pacientes -->
+      <div class="col-md-4 col-lg-3 sidebar">
+        <div class="input-group mb-2">
+          <input type="search" id="buscador" class="form-control form-control-sm" placeholder="🔍 Buscar por nombre o DNI..." oninput="filtrarPacientes()">
+        </div>
+        <div class="list-group shadow-sm bg-white rounded" id="listaPacientes">
+          <div class="p-3 text-center text-muted small">Cargando pacientes...</div>
+        </div>
+      </div>
+
+      <!-- Columna Derecha: Detalle y Evolución -->
+      <div class="col-md-8 col-lg-9">
+        <div id="placeholderVacio" class="card shadow-sm border-0 p-5 text-center text-muted">
+          <h5>Selecciona un paciente de la lista para ver su ficha y registro fotográfico.</h5>
+        </div>
+
+        <div id="detallePaciente" class="card shadow-sm border-0 p-3 p-md-4" style="display: none;">
+          <div class="d-flex flex-wrap justify-content-between align-items-start border-bottom pb-3 mb-3 gap-2">
+            <div>
+              <h3 class="mb-1 text-primary fw-bold" id="pacienteNombre"></h3>
+              <p class="text-muted mb-0 small" id="pacienteInfo"></p>
+            </div>
+            <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuevaSesion">
+              + Nueva Sesión / Foto
+            </button>
+          </div>
+
+          <div id="alertasAlergia" class="alert alert-warning py-2 px-3 small mb-3" style="display: none;"></div>
+
+          <div class="mb-4 p-3 bg-light rounded border">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="fw-bold mb-0 text-secondary">📁 Documentación Adjunta</h6>
+              <button class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size: 0.8rem;" data-bs-toggle="modal" data-bs-target="#modalDocumentacion">
+                + Adjuntar / Actualizar
+              </button>
+            </div>
+            <div id="docsContainer" class="d-flex flex-wrap gap-2">
+              <span class="text-muted small">Sin documentación adjunta.</span>
+            </div>
+          </div>
+
+          <h5 class="fw-bold mb-3">Historial Clínico y Fotos</h5>
+          <div id="historialSesiones"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Nuevo Paciente -->
+  <div class="modal fade" id="modalNuevoPaciente" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Registrar Nuevo Paciente</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="formPaciente" onsubmit="guardarPaciente(event)">
+          <div class="modal-body">
+            <div class="row g-2">
+              <div class="col-md-6 mb-2">
+                <label class="form-label small fw-bold">Nombre Completo *</label>
+                <input type="text" id="pNombre" class="form-control" required>
+              </div>
+              <div class="col-md-6 mb-2">
+                <label class="form-label small fw-bold">DNI / Identificación *</label>
+                <input type="text" id="pDni" class="form-control" required>
+              </div>
+              <div class="col-md-4 mb-2">
+                <label class="form-label small fw-bold">Teléfono</label>
+                <input type="tel" id="pTel" class="form-control">
+              </div>
+              <div class="col-md-4 mb-2">
+                <label class="form-label small fw-bold">Email</label>
+                <input type="email" id="pEmail" class="form-control">
+              </div>
+              <div class="col-md-4 mb-2">
+                <label class="form-label small fw-bold">Fecha de Nacimiento</label>
+                <input type="date" id="pNac" class="form-control">
+              </div>
+              <div class="col-12 mb-3">
+                <label class="form-label small fw-bold">Antecedentes Médicos / Alergias</label>
+                <textarea id="pAlergias" class="form-control" rows="2" placeholder="Hipertensión, alergia a la penicilina, etc."></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" id="btnGuardarPaciente" class="btn btn-primary btn-sm">Guardar Paciente</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Adjuntar Documentación -->
+  <div class="modal fade" id="modalDocumentacion" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Adjuntar Documentación</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="formDocumentacion" onsubmit="guardarDocumentacion(event)">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Consentimiento Médico (PDF o Imagen)</label>
+              <input type="file" id="docConsentimiento" class="form-control" accept=".pdf,image/jpeg,image/png">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Historia Clínica / Estudios Externos (PDF o Imagen)</label>
+              <input type="file" id="docHistoria" class="form-control" accept=".pdf,image/jpeg,image/png">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" id="btnGuardarDocs" class="btn btn-primary btn-sm">Subir Documentos</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Nueva Sesión -->
+  <div class="modal fade" id="modalNuevaSesion" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Nueva Sesión Clínica</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="formSesion" onsubmit="guardarSesion(event)">
+          <div class="modal-body">
+            <div class="mb-2">
+              <label class="form-label small fw-bold">Profesional a cargo</label>
+              <input type="text" id="sProfesional" class="form-control" placeholder="Nombre del profesional que realizó el tratamiento">
+              <div class="form-text small">Por defecto tu nombre, modifícalo si estás cargando la ficha de otro profesional.</div>
+            </div>
+            <div class="mb-2">
+              <label class="form-label small fw-bold">Tipo de Tratamiento *</label>
+              <input type="text" id="sTipo" class="form-control" placeholder="Ej: Toxina Botulínica, Peeling, Ácido Hialurónico" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label small fw-bold">Detalles / Evolución Clínica *</label>
+              <textarea id="sDesc" class="form-control" rows="3" placeholder="Zonas tratadas, producto aplicado, unidades/ml, etc." required></textarea>
+            </div>
+            <div class="mb-2">
+              <label class="form-label small fw-bold">Adjuntar Fotografía(s)</label>
+              <input type="file" id="sFoto" class="form-control" accept="image/jpeg,image/png,image/webp,image/*" multiple>
+              <div class="form-text small">Puedes seleccionar varias fotos al mismo tiempo.</div>
+            </div>
+            <div class="mb-2">
+              <label class="form-label small fw-bold">Etiqueta de la Foto</label>
+              <select id="sEtiqueta" class="form-select">
+                <option value="antes">Antes del procedimiento</option>
+                <option value="despues">Inmediatamente Después</option>
+                <option value="control">Control</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" id="btnGuardarSesion" class="btn btn-primary btn-sm">Guardar Sesión</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

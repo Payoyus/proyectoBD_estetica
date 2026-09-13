@@ -1,0 +1,79 @@
+body {
+  background-color: #f4f6f9;
+  font-family: system-ui, -apple-system, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sidebar {
+  max-height: calc(100vh - 70px);
+  overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    max-height: 250px;
+    margin-bottom: 1rem;
+  }
+}
+
+.paciente-item {
+  cursor: pointer;
+  transition: background 0.15s ease-in-out;
+}
+
+.paciente-item:hover {
+  background-color: #e9ecef;
+}
+
+.paciente-item.active {
+  background-color: #0d6efd;
+  color: white;
+}
+
+.paciente-item.active .text-muted {
+  color: #dee2e6 !important;
+}
+
+.photo-card {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+}
+
+.photo-tag {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+  z-index: 10;
+}
+
+.badge-antes { background: #dc3545; color: white; }
+.badge-despues { background: #198754; color: white; }
+.badge-control { background: #0dcaf0; color: #000; }
+.badge-otro { background: #6c757d; color: white; }
+
+.doc-badge {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.user-pill {
+  font-size: 0.85rem;
+  background: #eef2f7;
+  color: #334155;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-weight: 500;
+}
