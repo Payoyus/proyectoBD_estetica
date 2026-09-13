@@ -1,79 +1,143 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --gold-primary: #c5a059;
+  --gold-hover: #ad873e;
+  --gold-light: #f5efe6;
+  --gold-border: #dfd4c2;
+  --dark-bg: #121212;
+  --dark-surface: #1e1e1e;
+  --body-bg: #f8f8f7;
+  --text-main: #2b2b2b;
+  --text-muted: #737373;
+}
+
 body {
-  background-color: #f4f6f9;
-  font-family: system-ui, -apple-system, sans-serif;
-  -webkit-tap-highlight-color: transparent;
+  font-family: 'Montserrat', sans-serif;
+  background-color: var(--body-bg);
+  color: var(--text-main);
+  letter-spacing: 0.02em;
 }
 
+/* Navbar superior estilo premium */
+.navbar {
+  background-color: var(--dark-bg) !important;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.navbar-brand {
+  color: var(--gold-primary) !important;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.95rem;
+}
+
+/* Botones principales dorados */
+.btn-primary {
+  background-color: var(--gold-primary);
+  border-color: var(--gold-primary);
+  color: #ffffff;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-primary:hover, .btn-primary:focus, .btn-primary:active {
+  background-color: var(--gold-hover) !important;
+  border-color: var(--gold-hover) !important;
+  color: #ffffff !important;
+}
+
+.btn-outline-primary {
+  color: var(--gold-primary);
+  border-color: var(--gold-primary);
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--gold-primary);
+  border-color: var(--gold-primary);
+  color: #ffffff;
+}
+
+/* Sidebar y lista de pacientes */
 .sidebar {
-  max-height: calc(100vh - 70px);
-  overflow-y: auto;
-}
-
-@media (max-width: 768px) {
-  .sidebar {
-    max-height: 250px;
-    margin-bottom: 1rem;
-  }
+  background: #ffffff;
+  border-right: 1px solid var(--gold-border);
 }
 
 .paciente-item {
-  cursor: pointer;
-  transition: background 0.15s ease-in-out;
+  border-left: 3px solid transparent !important;
+  transition: all 0.15s ease-in-out;
 }
 
 .paciente-item:hover {
-  background-color: #e9ecef;
+  background-color: var(--gold-light);
 }
 
 .paciente-item.active {
-  background-color: #0d6efd;
-  color: white;
+  background-color: var(--gold-light) !important;
+  border-left: 3px solid var(--gold-primary) !important;
+  color: var(--dark-bg) !important;
 }
 
 .paciente-item.active .text-muted {
-  color: #dee2e6 !important;
+  color: #6c604d !important;
 }
 
+/* Tarjetas y contenedores */
+.card, .border.rounded.bg-white {
+  border-color: var(--gold-border) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+/* Alertas y badges */
+#alertasAlergia {
+  background-color: #fff9f0;
+  border: 1px solid #faecd8;
+  color: #9c6c1c;
+  border-radius: 6px;
+}
+
+.badge.bg-secondary {
+  background-color: var(--dark-surface) !important;
+  letter-spacing: 0.05em;
+}
+
+/* Tarjetas de fotos */
 .photo-card {
   position: relative;
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
+  border: 1px solid #e5e5e5;
   background: #000;
 }
 
 .photo-tag {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  font-size: 0.75rem;
-  font-weight: bold;
-  text-transform: uppercase;
-  padding: 2px 8px;
+  top: 6px;
+  left: 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
   border-radius: 4px;
-  z-index: 10;
+  letter-spacing: 0.05em;
+  z-index: 2;
 }
 
-.badge-antes { background: #dc3545; color: white; }
-.badge-despues { background: #198754; color: white; }
-.badge-control { background: #0dcaf0; color: #000; }
-.badge-otro { background: #6c757d; color: white; }
+.badge-antes {
+  background: rgba(18, 18, 18, 0.85);
+  color: #f3f3f3;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.badge-despues {
+  background: rgba(197, 160, 89, 0.95);
+  color: #ffffff;
+}
 
 .doc-badge {
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
   border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.user-pill {
-  font-size: 0.85rem;
-  background: #eef2f7;
-  color: #334155;
-  padding: 5px 12px;
-  border-radius: 20px;
-  font-weight: 500;
+  font-size: 0.8rem;
+  letter-spacing: 0.03em;
 }
